@@ -1,21 +1,33 @@
-FROM node:latest
+FROM node:8.17.0
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && \
-    apt-get -qq install bluetooth bluez libbluetooth-dev libudev-dev
+# Use archived Debian Stretch sources
+
+RUN echo "deb http://archive.debian.org/debian stretch main" > /etc/apt/sources.list && \
+echo "deb http://archive.debian.org/debian-security stretch/updates main" >> /etc/apt/sources.list && \
+echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until && \
+apt-get update
+
+# Install required packages
+
+RUN apt-get install -y --no-install-recommends \
+bluetooth \
+bluez \
+libbluetooth-dev \
+libudev-dev \
+python \
+build-essential && \
+rm -rf /var/lib/apt/lists/\*
+
+# Install BTLEjuice globally
 
 RUN npm install -g btlejuice --unsafe-perm
 
-## Work around bluetooth-hci-socket missing
-## https://github.com/DigitalSecurity/btlejuice/issues/15
-RUN apt-get -qq install python && \
-    npm install -g n && \
-    n 8.9.0 && \
-    npm install bluetooth-hci-socket --unsafe-perm
+# Expose the default BTLEjuice proxy port
 
 EXPOSE 8000
 
-ENV BTLEJUICE_iface hci0
+# Start the proxy using hci0 interface (hardcoded)
 
-ENTRYPOINT btlejuice-proxy --iface BTLEJUICE_iface
+ENTRYPOINT \["btlejuice-proxy", "--iface", "hci0"\]
